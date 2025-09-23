@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  removebg-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-demo-api-key-123}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=${DEBUG:-false}
+      - TEMP_DIR=/app/temp_images
+    volumes:
+      # Opzionale: monta una directory locale per i file temporanei
+      - ./temp_images:/app/temp_images
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

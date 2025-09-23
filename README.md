@@ -187,6 +187,60 @@ L'API restituisce i seguenti codici di stato HTTP:
 - Timeout di 30 secondi per il download delle immagini
 - Supporto per immagini di dimensioni ragionevoli (limitato dalla memoria disponibile)
 
+## 🐳 Deployment con Docker
+
+### Opzione 1: Build e run automatico
+```bash
+# Esegui lo script automatico
+./docker-build.sh
+```
+
+### Opzione 2: Docker Compose (raccomandato)
+```bash
+# Build e avvio
+docker-compose up -d
+
+# Per vedere i logs
+docker-compose logs -f
+
+# Per fermare
+docker-compose down
+```
+
+### Opzione 3: Docker manuale
+```bash
+# Build dell'immagine
+docker build -t removebg-api:latest .
+
+# Run del container
+docker run -d \
+  --name removebg-api \
+  -p 8000:8000 \
+  -e API_KEY=your-api-key-here \
+  -e DEBUG=false \
+  removebg-api:latest
+
+# Verifica che sia in esecuzione
+docker ps
+
+# Logs
+docker logs -f removebg-api
+```
+
+### Configurazione Docker
+
+**Variabili d'ambiente per Docker:**
+- `API_KEY`: Chiave API (default: demo-api-key-123)
+- `DEBUG`: Modalità debug (default: false)
+- `HOST`: Host interno (sempre 0.0.0.0 in Docker)
+- `PORT`: Porta interna (sempre 8000 in Docker)
+
+**File di configurazione:**
+- `Dockerfile`: Configurazione dell'immagine
+- `docker-compose.yml`: Orchestrazione dei servizi
+- `.dockerignore`: File da escludere dal build
+- `docker-build.sh`: Script automatico di build e deploy
+
 ## Sviluppo
 
 ### Struttura del progetto
@@ -194,9 +248,14 @@ L'API restituisce i seguenti codici di stato HTTP:
 ```
 ├── main.py              # Entry point dell'applicazione
 ├── image_processor.py   # Logica di processamento delle immagini
-├── requirements.txt     # Dipendenze Python  
+├── requirements.txt     # Dipendenze Python
+├── Dockerfile          # Configurazione Docker
+├── docker-compose.yml  # Orchestrazione Docker
+├── docker-build.sh     # Script automatico Docker
+├── .dockerignore       # File da escludere da Docker
 ├── .env                # Configurazione locale
 ├── .env.example        # Template di configurazione
+├── .env.docker         # Template per Docker
 └── README.md           # Questa documentazione
 ```
 
