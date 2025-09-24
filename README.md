@@ -6,11 +6,14 @@ API HTTP per rimuovere lo sfondo dalle immagini utilizzando la libreria `rembg` 
 
 - ✅ API HTTP protetta da chiave API
 - ✅ Download automatico delle immagini da URL
-- ✅ Rimozione dello sfondo usando rembg con modello birefnet-general
+- ✅ Rimozione dello sfondo usando **RMBG-2.0** (BriaAI) o fallback rembg
+- ✅ **Metadata dettagliati** incorporati nell'immagine processata
 - ✅ Ottimizzato per foto di prodotti e oggetti
+- ✅ **Supporto credenziali HuggingFace** per modelli privati
+- ✅ Cache persistente per modelli AI
 - ✅ Pulizia automatica dei file temporanei
 - ✅ Gestione degli errori completa
-- ✅ Logging strutturato
+- ✅ Logging strutturato con timing di processamento
 - ✅ Documentazione API automatica (Swagger/OpenAPI)
 
 ## Installazione
@@ -31,11 +34,14 @@ API HTTP per rimuovere lo sfondo dalle immagini utilizzando la libreria `rembg` 
    ```
    
    Modifica il file `.env` con le tue configurazioni:
-   ```
+   ```bash
    API_KEY=your-secret-api-key-here
    HOST=0.0.0.0
    PORT=8000
-   DEBUG=False
+   DEBUG=false
+   
+   # Opzionale: Token HuggingFace per modelli migliori
+   HF_TOKEN=your-huggingface-token-here
    ```
 
 ## Utilizzo
@@ -153,8 +159,83 @@ fetch(`${apiUrl}?image_url=${encodeURIComponent(imageUrl)}`, {
 - `API_KEY`: Chiave API per l'autenticazione (obbligatoria)
 - `HOST`: Host su cui avviare il server (default: 0.0.0.0)
 - `PORT`: Porta su cui avviare il server (default: 8000)
-- `DEBUG`: Modalità debug (default: False)
+- `DEBUG`: Modalità debug (default: false)
 - `TEMP_DIR`: Directory per i file temporanei (opzionale)
+- `HF_TOKEN`: Token HuggingFace per accedere ai modelli migliori (opzionale)
+
+### Token HuggingFace
+
+Per ottenere prestazioni migliori, puoi configurare un token HuggingFace:
+
+1. **Registrati su [HuggingFace](https://huggingface.co/)**
+2. **Vai alle [impostazioni token](https://huggingface.co/settings/tokens)**
+3. **Crea un nuovo token con permessi di lettura**
+4. **Aggiungi il token al tuo file `.env`:**
+   ```bash
+   HF_TOKEN=hf_your_token_here
+   ```
+
+**Vantaggi del token HF:**
+- Accesso ai modelli **RMBG-2.0** (migliori prestazioni)
+- Nessun limite di rate per il download dei modelli
+- Accesso a modelli privati e premium
+
+### Metadata delle immagini
+
+Ogni immagine processata include metadata dettagliati incorporati nel file PNG:
+
+**Metadata standard:**
+- Titolo e descrizione del processamento
+- Software utilizzato e versione API
+- Timestamp di processamento
+- URL dell'immagine originale
+
+**Metadata tecnici:**
+- Modello AI utilizzato (RMBG-2.0 o rembg)
+- Dispositivo di processamento (CPU/GPU)
+- Tempo di processamento in secondi
+- Formato e dimensioni originali
+- Informazioni sul canale alpha
+
+**Metadata strutturati JSON:**
+```json
+{
+  "processing": {
+    "timestamp": "2024-01-01T12:00:00",
+    "model": "RMBG-2.0 (Transformers)",
+    "device": "cpu",
+    "processing_time_seconds": 2.45,
+    "success": true
+  },
+  "original": {
+    "url": "https://example.com/image.jpg",
+    "format": "JPEG",
+    "width": 1920,
+    "height": 1080,
+    "file_size_bytes": 234567
+  },
+  "output": {
+    "format": "PNG",
+    "has_alpha": true,
+    "width": 1920,
+    "height": 1080
+  }
+}
+```
+
+**Come leggere i metadata:**
+```python
+from PIL import Image
+
+# Apri l'immagine processata
+img = Image.open('processed_image.png')
+
+# Leggi i metadata
+print("Modello utilizzato:", img.text.get('Processing Model'))
+print("Tempo di processamento:", img.text.get('Processing Time'))
+print("URL originale:", img.text.get('Source URL'))
+print("Metadata JSON:", img.text.get('Processing Info JSON'))
+```
 
 ### Logging
 
@@ -198,7 +279,11 @@ L'API restituisce i seguenti codici di stato HTTP:
 
 ### Opzione 2: Docker Compose (raccomandato)
 ```bash
-# Build e avvio
+# Copia e configura le variabili d'ambiente
+cp .env.example .env
+# Edita .env con le tue configurazioni
+
+# Build e avvio con cache persistente
 docker-compose up -d
 
 # Per vedere i logs
@@ -210,15 +295,20 @@ docker-compose down
 
 ### Opzione 3: Docker manuale
 ```bash
-# Build dell'immagine
-docker build -t removebg-api:latest .
+# Build dell'immagine con token HF (opzionale)
+docker build \
+  --build-arg HF_TOKEN=your-hf-token-here \
+  -t removebg-api:latest .
 
-# Run del container
+# Run del container con volumi per cache
 docker run -d \
   --name removebg-api \
   -p 8000:8000 \
   -e API_KEY=your-api-key-here \
+  -e HF_TOKEN=your-hf-token-here \
   -e DEBUG=false \
+  -v hf_cache:/app/.cache/huggingface \
+  -v torch_cache:/app/.cache/torch \
   removebg-api:latest
 
 # Verifica che sia in esecuzione
@@ -228,13 +318,41 @@ docker ps
 docker logs -f removebg-api
 ```
 
+### Configurazione Docker con HuggingFace
+
+**Setup completo con token HF:**
+```bash
+# File .env
+API_KEY=your-secure-api-key
+HF_TOKEN=hf_your_token_here
+DEBUG=false
+
+# Build con pre-download dei modelli
+docker-compose build --build-arg HF_TOKEN=$HF_TOKEN
+
+# Avvio con cache persistente
+docker-compose up -d
+```
+
+**Vantaggi della configurazione avanzata:**
+- ✅ **Pre-download modelli** durante il build (primo avvio più veloce)
+- ✅ **Cache persistente** tra riavvii del container
+- ✅ **Modelli RMBG-2.0** per qualità superiore
+- ✅ **Memoria aumentata** per gestire modelli AI (4GB in produzione)
+
 ### Configurazione Docker
 
 **Variabili d'ambiente per Docker:**
 - `API_KEY`: Chiave API (default: demo-api-key-123)
+- `HF_TOKEN`: Token HuggingFace per modelli migliori (opzionale)
 - `DEBUG`: Modalità debug (default: false)
 - `HOST`: Host interno (sempre 0.0.0.0 in Docker)
 - `PORT`: Porta interna (sempre 8000 in Docker)
+
+**Volumi Docker:**
+- `hf_cache`: Cache modelli HuggingFace (persistente)
+- `torch_cache`: Cache PyTorch (persistente)
+- `./temp_images`: Directory immagini temporanee (opzionale)
 
 **File di configurazione:**
 - `Dockerfile`: Configurazione dell'immagine

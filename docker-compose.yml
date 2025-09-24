@@ -2,7 +2,11 @@ version: '3.8'
 
 services:
   removebg-api:
-    build: .
+    build:
+      context: .
+      args:
+        # Passa il token HuggingFace se fornito
+        HF_TOKEN: ${HF_TOKEN:-}
     ports:
       - "8000:8000"
     environment:
@@ -11,13 +15,26 @@ services:
       - PORT=8000
       - DEBUG=${DEBUG:-false}
       - TEMP_DIR=/app/temp_images
+      # Credenziali HuggingFace
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
     volumes:
       # Opzionale: monta una directory locale per i file temporanei
       - ./temp_images:/app/temp_images
+      # Cache persistente per modelli HuggingFace
+      - hf_cache:/app/.cache/huggingface
+      - torch_cache:/app/.cache/torch
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s  # Tempo maggiore per il caricamento dei modelli
+
+volumes:
+  hf_cache:
+    driver: local
+  torch_cache:
+    driver: local

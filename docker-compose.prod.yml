@@ -5,6 +5,9 @@ services:
     build:
       context: https://github.com/The-3Labs-Team/removebg.git
       dockerfile: Dockerfile
+      args:
+        # Token HuggingFace per modelli privati
+        HF_TOKEN: ${HF_TOKEN:-}
     ports:
       - "127.0.0.1:8000:8000"
     environment:
@@ -13,24 +16,31 @@ services:
       - PORT=8000
       - DEBUG=false
       - TEMP_DIR=/app/temp_images
+      # Credenziali HuggingFace
+      - HF_TOKEN=${HF_TOKEN:-}
+      - HF_HOME=/app/.cache/huggingface
+      - TRANSFORMERS_CACHE=/app/.cache/huggingface/transformers
     volumes:
       - ./temp_images:/app/temp_images
       - ./logs:/app/logs
+      # Cache persistente per modelli (importante in produzione)
+      - hf_cache_prod:/app/.cache/huggingface
+      - torch_cache_prod:/app/.cache/torch
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 120s  # Tempo maggiore per primo avvio in produzione
     deploy:
       resources:
         limits:
+          memory: 4G  # Memoria aumentata per i modelli
+          cpus: '2.0'
+        reservations:
           memory: 2G
           cpus: '1.0'
-        reservations:
-          memory: 1G
-          cpus: '0.5'
     networks:
       - removebg-network
 
@@ -48,6 +58,12 @@ services:
     restart: unless-stopped
     networks:
       - removebg-network
+
+volumes:
+  hf_cache_prod:
+    driver: local
+  torch_cache_prod:
+    driver: local
 
 networks:
   removebg-network:
