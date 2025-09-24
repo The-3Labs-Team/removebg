@@ -40,6 +40,23 @@ RUN mkdir -p /app/temp_images \
     && mkdir -p /app/.cache/huggingface/datasets \
     && mkdir -p /app/.cache/torch
 
+# Pre-download dei modelli (opzionale, se HF_TOKEN è fornito)
+# Questo step viene eseguito come root per evitare problemi di permessi
+ARG HF_TOKEN
+ENV HF_TOKEN=${HF_TOKEN}
+
+# Copia lo script per il preload dei modelli
+COPY preload_models.py /tmp/preload_models.py
+
+# Script per pre-scaricare i modelli se il token è fornito
+RUN if [ -n "$HF_TOKEN" ]; then \
+        echo "Token HF fornito, pre-download dei modelli..." && \
+        python /tmp/preload_models.py; \
+    else \
+        echo "Nessun token HF fornito, modelli verranno scaricati al primo avvio"; \
+    fi && \
+    rm -f /tmp/preload_models.py
+
 # Copia il codice dell'applicazione
 COPY main.py .
 COPY image_processor.py .
@@ -48,31 +65,6 @@ COPY image_processor.py .
 RUN groupadd -r appuser && useradd -r -g appuser appuser -m
 RUN chown -R appuser:appuser /app
 RUN mkdir -p /home/appuser/.u2net && chown -R appuser:appuser /home/appuser
-
-# Pre-download dei modelli (opzionale, se HF_TOKEN è fornito)
-# Questo step viene eseguito come root per evitare problemi di permessi
-ARG HF_TOKEN
-ENV HF_TOKEN=${HF_TOKEN}
-
-# Script per pre-scaricare i modelli se il token è fornito
-RUN if [ -n "$HF_TOKEN" ]; then \
-        echo "Token HF fornito, pre-download dei modelli..." && \
-        python -c "import os; os.environ['HF_TOKEN']='$HF_TOKEN'; \
-        from transformers import AutoModelForImageSegmentation; \
-        try: \
-            model = AutoModelForImageSegmentation.from_pretrained('briaai/RMBG-2.0', trust_remote_code=True); \
-            print('✅ RMBG-2.0 scaricato con successo'); \
-        except Exception as e: \
-            print(f'⚠️  RMBG-2.0 non disponibile: {e}'); \
-            try: \
-                model = AutoModelForImageSegmentation.from_pretrained('briaai/RMBG-1.4', trust_remote_code=True); \
-                print('✅ RMBG-1.4 scaricato come fallback'); \
-            except Exception as e2: \
-                print(f'⚠️  Nessun modello RMBG disponibile: {e2}'); \
-        "; \
-    else \
-        echo "Nessun token HF fornito, modelli verranno scaricati al primo avvio"; \
-    fi
 
 USER appuser
 
