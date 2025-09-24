@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  removebg-api:
+    build:
+      context: https://github.com/The-3Labs-Team/removebg.git
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - API_KEY=${API_KEY:-secure-production-key}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      - TEMP_DIR=/app/temp_images
+    volumes:
+      - ./temp_images:/app/temp_images
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    networks:
+      - removebg-network
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - removebg-api
+    restart: unless-stopped
+    networks:
+      - removebg-network
+
+networks:
+  removebg-network:
+    driver: bridge
