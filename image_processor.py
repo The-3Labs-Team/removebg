@@ -5,9 +5,11 @@ from typing import Optional
 from urllib.parse import urlparse
 import requests
 from PIL import Image
-from rembg import remove
+from rembg import remove, new_session
 import io
+import logging
 
+logger = logging.getLogger(__name__)
 
 class ImageProcessor:
     """Classe per gestire il download, processamento e rimozione delle immagini."""
@@ -16,6 +18,9 @@ class ImageProcessor:
         self.temp_dir = temp_dir or tempfile.gettempdir()
         # Crea la directory temporanea se non esiste
         os.makedirs(self.temp_dir, exist_ok=True)
+        # Inizializza il modello birefnet-general per foto di prodotti
+        self.session = new_session('birefnet-general')
+        logger.info("Inizializzato modello birefnet-general per foto prodotti")
     
     def is_valid_image_url(self, url: str) -> bool:
         """Verifica se l'URL è valido e punta a un'immagine."""
@@ -114,8 +119,8 @@ class ImageProcessor:
             with open(input_path, 'rb') as f:
                 input_data = f.read()
             
-            # Rimuovi lo sfondo
-            output_data = remove(input_data)
+            # Rimuovi lo sfondo usando il modello birefnet-general
+            output_data = remove(input_data, session=self.session)
             
             # Genera il percorso di output
             base_name = os.path.splitext(os.path.basename(input_path))[0]

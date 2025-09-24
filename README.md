@@ -1,12 +1,13 @@
 # Remove Background API
 
-API HTTP per rimuovere lo sfondo dalle immagini utilizzando la libreria `rembg`.
+API HTTP per rimuovere lo sfondo dalle immagini utilizzando la libreria `rembg` con modello **birefnet-general** ottimizzato per foto di prodotti.
 
 ## Caratteristiche
 
 - ✅ API HTTP protetta da chiave API
 - ✅ Download automatico delle immagini da URL
-- ✅ Rimozione dello sfondo usando rembg
+- ✅ Rimozione dello sfondo usando rembg con modello birefnet-general
+- ✅ Ottimizzato per foto di prodotti e oggetti
 - ✅ Pulizia automatica dei file temporanei
 - ✅ Gestione degli errori completa
 - ✅ Logging strutturato
